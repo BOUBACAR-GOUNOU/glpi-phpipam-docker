@@ -1,0 +1,76 @@
+services:
+
+  db:
+    image: mariadb:11
+    container_name: glpi-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+
+  glpi:
+    image: glpi/glpi:latest
+    container_name: glpi
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "8080:80"
+    environment:
+      GLPI_DB_HOST: db
+      GLPI_DB_NAME: ${MYSQL_DATABASE}
+      GLPI_DB_USER: ${MYSQL_USER}
+      GLPI_DB_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - glpi_data:/var/glpi
+
+  phpipam-web:
+    image: phpipam/phpipam-www:latest
+    container_name: phpipam-web
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "8081:80"
+    environment:
+      TZ: Europe/Paris
+      IPAM_DATABASE_HOST: db
+      IPAM_DATABASE_USER: ${PHPIPAM_DB_USER}
+      IPAM_DATABASE_PASS: ${PHPIPAM_DB_PASSWORD}
+      IPAM_DATABASE_NAME: ${PHPIPAM_DB_NAME}
+      IPAM_DATABASE_WEBHOST: "%"
+    volumes:
+      - phpipam-logo:/phpipam/css/images/logo
+      - phpipam-ca:/usr/local/share/ca-certificates:ro
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+
+  phpipam-cron:
+    image: phpipam/phpipam-cron:latest
+    container_name: phpipam-cron
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      TZ: Europe/Paris
+      IPAM_DATABASE_HOST: db
+      IPAM_DATABASE_USER: ${PHPIPAM_DB_USER}
+      IPAM_DATABASE_PASS: ${PHPIPAM_DB_PASSWORD}
+      IPAM_DATABASE_NAME: ${PHPIPAM_DB_NAME}
+      SCAN_INTERVAL: 1h
+    volumes:
+      - phpipam-ca:/usr/local/share/ca-certificates:ro
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+
+volumes:
+  db_data:
+  glpi_data:
+  phpipam-logo:
+  phpipam-ca:
